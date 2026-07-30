@@ -121,6 +121,7 @@ jobs:
 
       - name: Get previous Packages
         if: steps.version.outputs.ref != ''
+        continue-on-error: true
         uses: robinraju/release-downloader@v1
         with:
           latest: true
@@ -130,6 +131,7 @@ jobs:
 
       - name: Get previous Sources
         if: steps.version.outputs.ref != ''
+        continue-on-error: true
         uses: robinraju/release-downloader@v1
         with:
           latest: true
