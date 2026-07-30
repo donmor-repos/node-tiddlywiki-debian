@@ -101,7 +101,7 @@ jobs:
 
       - name: Commit changelog
         if: steps.version.outputs.ref != ''
-        uses: step-security/ghcommit-action@v0
+        uses: planetscale/ghcommit-action@v0
         with:
           commit_message: "add ${{ steps.version.outputs.ref }}"
           repo: ${{ github.repository }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Create and push tag
         if: steps.version.outputs.ref != ''
-        uses: step-security/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           tag_name: "{{ steps.version.outputs.ref }}"
           create_git_tag_only: true
