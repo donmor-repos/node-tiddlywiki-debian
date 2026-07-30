@@ -18,7 +18,7 @@ env:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 
@@ -60,13 +60,14 @@ jobs:
       - name: Extract upstream source
         if: steps.version.outputs.ref != ''
         run: |
+          rm .github/workflows/packaging.yml LICENSE README.md
           tar xvf "../${{ env.DEB_SOURCE_PACKAGE }}_${{ steps.version.outputs.ref }}.orig.tar.gz" --strip-components=1
 
       - name: Install build dependencies
         if: steps.version.outputs.ref != ''
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends build-essential devscripts dh-nodejs
+          sudo apt install -y --no-install-recommends apt-utils build-essential devscripts dh-nodejs
 
       - name: Update Debian changelog
         if: steps.version.outputs.ref != ''
@@ -96,14 +97,14 @@ jobs:
         uses: iarekylew00t/verified-bot-commit@v2
         with:
           message: "add ${{ steps.version.outputs.ref }}"
-          filea: |
+          files: |
             debian/changelog
 
       - name: Create and push tag
         if: steps.version.outputs.ref != ''
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          tag_name: "{{ steps.version.outputs.ref }}"
+          tag_name: "${{ steps.version.outputs.ref }}"
           create_git_tag_only: true
 
       - name: Get previous Packages
@@ -126,6 +127,11 @@ jobs:
           fileName: 'Sources'
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create upload dir
+        if: steps.version.outputs.ref != ''
+        run: |
+          mkdir -p download/${{ steps.version.outputs.ref }}
+
       - name: Create repo
         if: steps.version.outputs.ref != ''
         working-directory: download/${{ steps.version.outputs.ref }}
@@ -143,7 +149,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: "true"
-          working-directory: download/${{ steps.version.outputs.ref }}
+          working_directory: download/${{ steps.version.outputs.ref }}
           files: |
             *.deb
             *.gz
