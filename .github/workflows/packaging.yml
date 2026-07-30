@@ -23,17 +23,9 @@ jobs:
       contents: write
 
     steps:
-      #- name: Generate a token for the GitHub App
-      #  id: app-token
-      #  uses: actions/create-github-app-token@v3
-      #  with:
-      #    app-id: ${{ vars.APP_ID }}
-      #    private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout packaging repository
         uses: actions/checkout@v4
         with:
-          #token: ${{ steps.app-token.outputs.token }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
           fetch-tags: true
@@ -70,6 +62,12 @@ jobs:
         run: |
           tar xvf "../${{ env.DEB_SOURCE_PACKAGE }}_${{ steps.version.outputs.ref }}.orig.tar.gz" --strip-components=1
 
+      - name: Install build dependencies
+        if: steps.version.outputs.ref != ''
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends devscripts dh-nodejs
+
       - name: Update Debian changelog
         if: steps.version.outputs.ref != ''
         run: |
@@ -77,12 +75,6 @@ jobs:
           export DEBEMAIL="donmor3000@hotmail.com"
           dch -v "${{ steps.version.outputs.ref }}-1" "Version number update for ${{ steps.version.outputs.ref }}."
           dch -r "node-tiddlywiki"
-
-      - name: Install build dependencies
-        if: steps.version.outputs.ref != ''
-        run: |
-          sudo apt update
-          sudo apt install -y --no-install-recommends dh-nodejs
 
       - name: Build Debian package
         if: steps.version.outputs.ref != ''
