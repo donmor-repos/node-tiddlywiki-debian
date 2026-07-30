@@ -1,0 +1,165 @@
+# .github/workflows/packaging.yml
+name: NPM -> Deb Packaging
+
+on:
+  schedule:
+    - cron: '0 0 * * *'    
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'NPM package version (e.g., 1.2.3). Leave empty to auto-pick the smallest missing version.'
+        required: false
+        default: ''
+
+env:
+  NPM_PACKAGE_NAME: 'tiddlywiki'
+  DEB_SOURCE_PACKAGE: 'node-tiddlywiki'
+  DEB_BINARY_PACKAGE: 'node-tiddlywiki'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+
+    steps:
+      #- name: Generate a token for the GitHub App
+      #  id: app-token
+      #  uses: actions/create-github-app-token@v3
+      #  with:
+      #    app-id: ${{ vars.APP_ID }}
+      #    private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout packaging repository
+        uses: actions/checkout@v4
+        with:
+          #token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine target version (ref)
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.ref }}" ]; then
+            REF="${{ github.event.inputs.ref }}"
+            echo "Using manually specified ref: $REF"
+          else
+            VERSIONS=$(npm view "${{ env.NPM_PACKAGE_NAME }}" versions --json 2>/dev/null | jq -r '.[]' | \
+                grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+            TAGS=$(git tag | sort -V)
+            MISSING=$(comm -23 <(echo "$VERSIONS") <(echo "$TAGS") | sort -V)
+            if [ -z "$MISSING" ]; then
+              echo "No missing versions found. Nothing to do."
+              exit 0
+            fi
+            REF=$(echo "$MISSING" | head -n1)
+            echo "Auto-selected missing version: $REF"
+          fi
+          echo "ref=$REF" >> $GITHUB_OUTPUT
+
+      - name: Download NPM package tarball
+        if: steps.version.outputs.ref != ''
+        run: |
+          npm pack "${{ env.NPM_PACKAGE_NAME }}@${{ steps.version.outputs.ref }}"
+          TGZ_FILE=$(ls *.tgz | head -n1)
+          mv "$TGZ_FILE" "../${{ env.DEB_SOURCE_PACKAGE }}_${{ steps.version.outputs.ref }}.orig.tar.gz"
+
+      - name: Extract upstream source
+        if: steps.version.outputs.ref != ''
+        run: |
+          tar xvf "../${{ env.DEB_SOURCE_PACKAGE }}_${{ steps.version.outputs.ref }}.orig.tar.gz" --strip-components=1
+
+      - name: Update Debian changelog
+        if: steps.version.outputs.ref != ''
+        run: |
+          export DEBFULLNAME="donmor"
+          export DEBEMAIL="donmor3000@hotmail.com"
+          dch -v "${{ steps.version.outputs.ref }}-1" "Version number update for ${{ steps.version.outputs.ref }}."
+          dch -r "node-tiddlywiki"
+
+      - name: Install build dependencies
+        if: steps.version.outputs.ref != ''
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends dh-nodejs
+
+      - name: Build Debian package
+        if: steps.version.outputs.ref != ''
+        run: |
+          dpkg-buildpackage -us -uc
+
+      - name: Verify Debian package
+        if: steps.version.outputs.ref != ''
+        run: |
+          DEB_FILE=$(ls ../*.deb | head -n1)
+          echo "Verifying $DEB_FILE"
+          dpkg-deb -I "$DEB_FILE"
+          dpkg-deb -c "$DEB_FILE"
+          sudo dpkg -i --dry-run "$DEB_FILE"
+          echo "Package verification passed."
+
+      - name: Commit changelog
+        if: steps.version.outputs.ref != ''
+        uses: step-security/ghcommit-action@v0
+        with:
+          commit_message: "add ${{ steps.version.outputs.ref }}"
+          repo: ${{ github.repository }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          file_pattern: 'debian/changelog'
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Create and push tag
+        if: steps.version.outputs.ref != ''
+        uses: step-security/git-auto-commit-action@v7
+        with:
+          tag_name: "{{ steps.version.outputs.ref }}"
+          create_git_tag_only: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get previous Packages
+        if: steps.version.outputs.ref != ''
+        uses: robinraju/release-downloader@v1
+        with:
+          latest: true
+          out-file-path: download/${{ steps.version.outputs.ref }}
+          fileName: 'Packages'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get previous Sources
+        if: steps.version.outputs.ref != ''
+        uses: robinraju/release-downloader@v1
+        with:
+          latest: true
+          out-file-path: download/${{ steps.version.outputs.ref }}
+          fileName: 'Sources'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create repo
+        if: steps.version.outputs.ref != ''
+        working-directory: download/${{ steps.version.outputs.ref }}
+        run: |
+          mv ../../../*.deb ../../../*.gz ../../../*.xz ../../../*.dsc ./
+          dpkg-scanpackages -m ../../download/${{ steps.version.outputs.ref }} >> Packages
+          dpkg-scansources ../../download/${{ steps.version.outputs.ref }} >> Sources
+          apt-ftparchive release . > Release
+
+      - name: Create release
+        if: steps.version.outputs.ref != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          body: "Version number update for ${{ steps.version.outputs.ref }}."
+          tag_name: ${{ steps.version.outputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: "true"
+          working-directory: download/${{ steps.version.outputs.ref }}
+          files: |
+            *.deb
+            *.gz
+            *.xz
+            *.dsc
+            Release
+            Sources
+            Packages
