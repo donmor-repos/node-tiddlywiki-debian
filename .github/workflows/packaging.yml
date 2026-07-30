@@ -101,14 +101,11 @@ jobs:
 
       - name: Commit changelog
         if: steps.version.outputs.ref != ''
-        uses: planetscale/ghcommit-action@v0.2.22
+        uses: iarekylew00t/verified-bot-commit@v2
         with:
-          commit_message: "add ${{ steps.version.outputs.ref }}"
-          repo: ${{ github.repository }}
-          branch: ${{ github.head_ref || github.ref_name }}
-          file_pattern: 'debian/changelog'
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          message: "add ${{ steps.version.outputs.ref }}"
+          filea: |
+            debian/changelog
 
       - name: Create and push tag
         if: steps.version.outputs.ref != ''
@@ -116,8 +113,6 @@ jobs:
         with:
           tag_name: "{{ steps.version.outputs.ref }}"
           create_git_tag_only: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previous Packages
         if: steps.version.outputs.ref != ''
