@@ -1,0 +1,25 @@
+Source: node-tiddlywiki
+Section: javascript
+Priority: optional
+Maintainer: donmor <donmor3000@hotmail.com>
+Testsuite: autopkgtest-pkg-nodejs
+Build-Depends:
+ debhelper-compat (= 13)
+ , dh-sequence-nodejs
+ , dh-nodejs
+Standards-Version: 4.7.4
+Homepage: https://github.com/TiddlyWiki/TiddlyWiki5#readme
+Vcs-Git: https://github.com/donmor/node-tiddlywiki.git
+Vcs-Browser: https://github.com/donmor/node-tiddlywiki
+Rules-Requires-Root: no
+
+Package: node-tiddlywiki
+Architecture: all
+Depends:
+ ${misc:Depends}
+ , 
+Description: A self-contained JavaScript wiki for the browser, Node.js, AWS Lambda etc
+ TiddlyWiki is a complete interactive wiki in JavaScript. It can be used as a
+ single HTML file in the browser or as a powerful Node.js application. It is
+ highly customisable: the entire user interface is itself implemented in hackable
+ WikiText.
