@@ -94,6 +94,7 @@ jobs:
 
       - name: Commit changelog
         if: steps.version.outputs.ref != ''
+        id: commit
         uses: iarekylew00t/verified-bot-commit@v2
         with:
           message: "add ${{ steps.version.outputs.ref }}"
@@ -102,10 +103,11 @@ jobs:
 
       - name: Create and push tag
         if: steps.version.outputs.ref != ''
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: rickstaa/action-create-tag@v1
         with:
-          tag_name: "${{ steps.version.outputs.ref }}"
-          create_git_tag_only: true
+          tag: "${{ steps.version.outputs.ref }}"
+          commit_sha: "${{ steps.commit.outputs.ref }}"
+          gpg_private_key: "${{ secrets.GPG_KEY }}"
 
       - name: Get previous Packages
         if: steps.version.outputs.ref != ''
@@ -140,6 +142,8 @@ jobs:
           dpkg-scanpackages -m ../../download/${{ steps.version.outputs.ref }} >> Packages
           dpkg-scansources ../../download/${{ steps.version.outputs.ref }} >> Sources
           apt-ftparchive release . > Release
+          echo "${{ secrets.GPG_KEY }}" | gpg --batch --import
+          gpg --batch --yes --clearsign --local-user ${{ secrets.GPG_KEY_FINGERPRINT }} --output InRelease Release
 
       - name: Create release
         if: steps.version.outputs.ref != ''
@@ -155,6 +159,6 @@ jobs:
             *.gz
             *.xz
             *.dsc
-            Release
+            InRelease
             Sources
             Packages
