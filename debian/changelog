@@ -1,3 +1,9 @@
+node-tiddlywiki (5.1.19-1) resolute; urgency=medium
+
+  * Version number update for 5.1.19.
+
+ -- donmor <donmor3000@hotmail.com>  Fri, 31 Jul 2026 08:53:55 +0000
+
 node-tiddlywiki (5.1.18-1) resolute; urgency=medium
 
   * Version number update for 5.1.18.
