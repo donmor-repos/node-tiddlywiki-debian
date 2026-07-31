@@ -9,6 +9,9 @@
 
 #override_dh_auto_build:
 
+execute_after_dh_fixperms:
+	chmod +x debian/node-tiddlywiki/usr/share/nodejs/tiddlywiki/tiddlywiki.js
+
 execute_after_dh_installdocs:
 	dh_nodejs_autodocs
 
