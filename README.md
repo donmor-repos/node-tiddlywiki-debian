@@ -19,7 +19,7 @@ curl -sLOJR --output-dir /usr/share/keyrings https://donmor-repos.github.io/pub/
 ``` bash
 tee /etc/apt/sources.list.d/node-tiddlywiki.sources <<EOF
 Types: deb deb-src
-URIs: https://github.com/donmor/node-tiddlywiki-debian/releases/latest/download
+URIs: https://github.com/donmor-repos/node-tiddlywiki-debian/releases/latest/download
 Suites: /
 Signed-By: /usr/share/keyrings/donmor-repos-keyring.gpg
 EOF
